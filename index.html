@@ -235,7 +235,7 @@
 
       <h1>💰 财富管理系统</h1>
 
-      <p>Cloudflare 理财资产平台</p>
+      <p>Cloudflare 云端理财平台</p>
 
       <input
         type="password"
@@ -394,7 +394,7 @@
       </div>
 
       <div class="footer">
-        Cloudflare Pages · 高级版理财系统
+        Cloudflare Pages · 云端数据库版
       </div>
 
     </div>
@@ -403,12 +403,12 @@
 
 <script>
 
+const API =
+"https://finance-api.lok2u2.workers.dev";
+
 const SYSTEM_PASSWORD = "admin123";
 
-let products =
-  JSON.parse(localStorage.getItem("finance_products")) || [];
-
-let editIndex = -1;
+let products = [];
 
 let chart;
 
@@ -428,7 +428,7 @@ function login(){
     document.getElementById("mainPage")
       .classList.remove("hidden");
 
-    render();
+    loadProducts();
 
   }else{
 
@@ -449,7 +449,7 @@ if(sessionStorage.getItem("finance_login")==="true"){
     document.getElementById("mainPage")
       .classList.remove("hidden");
 
-    render();
+    loadProducts();
 
   });
 
@@ -465,14 +465,14 @@ function logout(){
 }
 
 // 保存产品
-function saveProduct(){
+async function saveProduct(){
 
   const item = {
 
-    productName:
+    product_name:
       document.getElementById("productName").value,
 
-    bankName:
+    bank_name:
       document.getElementById("bankName").value,
 
     amount:
@@ -481,15 +481,15 @@ function saveProduct(){
     rate:
       Number(document.getElementById("rate").value),
 
-    buyDate:
+    buy_date:
       document.getElementById("buyDate").value,
 
-    endDate:
+    end_date:
       document.getElementById("endDate").value
 
   };
 
-  if(!item.productName || !item.bankName){
+  if(!item.product_name || !item.bank_name){
 
     alert("请填写完整信息");
 
@@ -497,24 +497,31 @@ function saveProduct(){
 
   }
 
-  if(editIndex >= 0){
+  await fetch(API + "/add-product",{
 
-    products[editIndex] = item;
+    method:"POST",
 
-    editIndex = -1;
+    headers:{
+      "Content-Type":"application/json"
+    },
 
-  }else{
+    body:JSON.stringify(item)
 
-    products.push(item);
-
-  }
-
-  localStorage.setItem(
-    "finance_products",
-    JSON.stringify(products)
-  );
+  });
 
   clearForm();
+
+  loadProducts();
+
+}
+
+// 加载产品
+async function loadProducts(){
+
+  const res =
+    await fetch(API + "/products");
+
+  products = await res.json();
 
   render();
 
@@ -532,7 +539,7 @@ function render(){
 
   let totalProfit = 0;
 
-  products.forEach((item,index)=>{
+  products.forEach((item)=>{
 
     total += item.amount;
 
@@ -544,7 +551,7 @@ function render(){
     const today = new Date();
 
     const end =
-      new Date(item.endDate);
+      new Date(item.end_date);
 
     const expired =
       end < today;
@@ -553,17 +560,17 @@ function render(){
 
       <tr>
 
-        <td>${item.productName}</td>
+        <td>${item.product_name}</td>
 
-        <td>${item.bankName}</td>
+        <td>${item.bank_name}</td>
 
         <td>¥${item.amount.toLocaleString()}</td>
 
         <td>${item.rate}%</td>
 
-        <td>${item.buyDate}</td>
+        <td>${item.buy_date}</td>
 
-        <td>${item.endDate}</td>
+        <td>${item.end_date}</td>
 
         <td>
           <span class="tag">
@@ -574,14 +581,8 @@ function render(){
         <td>
 
           <button
-            class="action-btn edit-btn"
-            onclick="editProduct(${index})">
-            编辑
-          </button>
-
-          <button
             class="action-btn delete-btn"
-            onclick="deleteProduct(${index})">
+            onclick="deleteProduct(${item.id})">
             删除
           </button>
 
@@ -609,6 +610,29 @@ function render(){
 
 }
 
+// 删除
+async function deleteProduct(id){
+
+  if(confirm("确认删除？")){
+
+    await fetch(API + "/delete-product",{
+
+      method:"POST",
+
+      headers:{
+        "Content-Type":"application/json"
+      },
+
+      body:JSON.stringify({id})
+
+    });
+
+    loadProducts();
+
+  }
+
+}
+
 // 图表
 function renderChart(){
 
@@ -616,7 +640,7 @@ function renderChart(){
     document.getElementById("chart");
 
   const labels =
-    products.map(i=>i.bankName);
+    products.map(i=>i.bank_name);
 
   const data =
     products.map(i=>i.amount);
@@ -650,51 +674,6 @@ function renderChart(){
     }
 
   });
-
-}
-
-// 编辑
-function editProduct(index){
-
-  const item = products[index];
-
-  document.getElementById("productName").value =
-    item.productName;
-
-  document.getElementById("bankName").value =
-    item.bankName;
-
-  document.getElementById("amount").value =
-    item.amount;
-
-  document.getElementById("rate").value =
-    item.rate;
-
-  document.getElementById("buyDate").value =
-    item.buyDate;
-
-  document.getElementById("endDate").value =
-    item.endDate;
-
-  editIndex = index;
-
-}
-
-// 删除
-function deleteProduct(index){
-
-  if(confirm("确认删除？")){
-
-    products.splice(index,1);
-
-    localStorage.setItem(
-      "finance_products",
-      JSON.stringify(products)
-    );
-
-    render();
-
-  }
 
 }
 
